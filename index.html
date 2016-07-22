@@ -42,35 +42,51 @@
         };
 
       var zTree = $.fn.zTree.init($("#ztree1"), showSetting, data);
+      var lastNodeList = [];
       var allParams = [];
-      
-      function getParentNodes(node){
-        if(node!=null){
-            var curNode = node.getParentNode();
-            if (curNode) {
-              allParams.push(curNode);
+      function getSelectedNodes(node){
+          var nodes = [];
+          if (node != null){
+              node.highlight = true;
+              nodes.push(node);
+              getParentNodes(node);
+          }
+          function getParentNodes(node){
+            if(node!=null){
+                var curNode = node.getParentNode();
+                if (curNode) {
+                  nodes.push(curNode);
+                }
+                getParentNodes(curNode);
             }
-            getParentNodes(curNode);
-        }
+          }
+          return nodes;
       }
-      
+
       $('#search').click(function(){
         var value = $.trim($('#input').val());
         var keyType = "name";
         var nodeList = zTree.getNodesByParamFuzzy(keyType, value);
+        
+        //去除上一次的高亮
+        for (var i = 0, l = lastNodeList.length; i < l; i++) { //上次查询的节点集合取消高亮
+          lastNodeList[i].highlight = false;
+          zTree.updateNode(lastNodeList[i]);
+        }
+
         if(nodeList.length>0){
           var node = nodeList[0];
           if (node !=null) {
-            allParams.push(node);
-            getParentNodes(node);
-          }
-        }
-        var flag = zTree.expandAll(false);
-        if (!flag) {
-          for( var i=0, l=allParams.length; i<l; i++) {
-            allParams[i].highlight = true; 
-            zTree.expandNode(allParams[i].getParentNode(), true, false, false); //将搜索到的节点的父节点展开
-            zTree.updateNode(allParams[i]); //更新节点数据，主要用于该节点显示属性的更新
+            allParams = getSelectedNodes(node);
+            var flag = zTree.expandAll(false);
+            if (!flag) {
+              for( var i=0, l=allParams.length; i<l; i++) {
+                zTree.expandNode(allParams[i].getParentNode(), true, false, false); //将搜索到的节点的父节点展开
+                zTree.updateNode(allParams[i]); //更新节点数据，主要用于该节点显示属性的更新
+              }
+              zTree.refresh();// 很重要，否则节点状态更新混乱
+              lastNodeList = allParams;
+            }
           }
         }
       });
